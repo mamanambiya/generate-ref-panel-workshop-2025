@@ -1,7 +1,5 @@
 # Federated Genotype Imputation Pipeline
 
-[![Unit Tests](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/workflows/Federated%20Imputation%20Pipeline%20-%20Unit%20Tests/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/unit-tests.yml)
-[![Integration Tests](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/workflows/Federated%20Imputation%20Pipeline%20-%20Integration%20Tests/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/integration-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WDL](https://img.shields.io/badge/WDL-1.0-blue.svg)](https://github.com/openwdl/wdl)
 [![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](https://hub.docker.com/r/mamana/imputation)
@@ -183,7 +181,7 @@ The pipeline includes comprehensive GitHub Actions workflows for automated testi
   - Complete pipeline integration testing
 - **Matrix Strategy**: Parallel execution for faster feedback
 - **Artifacts**: Test reports, validation results, logs
-- **Status**: [![Unit Tests](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/workflows/Federated%20Imputation%20Pipeline%20-%20Unit%20Tests/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/unit-tests.yml)
+- **Status**: Automated via GitHub Actions on push/PR
 
 #### Integration Tests - End-to-End Pipeline Testing  
 - **Triggers**: Push to `main`, daily at 2 AM UTC, manual dispatch
@@ -191,7 +189,7 @@ The pipeline includes comprehensive GitHub Actions workflows for automated testi
   - Main pipeline execution
   - Enhanced test pipeline with validation tasks
 - **Outputs**: MSAV files, comprehensive reports, performance metrics
-- **Status**: [![Integration Tests](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/workflows/Federated%20Imputation%20Pipeline%20-%20Integration%20Tests/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/integration-tests.yml)
+- **Status**: Automated via GitHub Actions daily and on main branch changes
 
 #### Local Unit Testing
 ```bash
