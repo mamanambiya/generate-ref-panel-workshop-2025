@@ -1,10 +1,10 @@
 # Contributing to Federated Imputation Pipeline
 
-## 🧬 GA4GH Hackathon 2025 - African Genomics Team
+## GA4GH Hackathon 2025 - African Genomics Team
 
 Thank you for your interest in contributing to the Federated Genotype Imputation Pipeline! This guide explains our development workflow, testing requirements, and CI/CD processes.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Development Workflow](#development-workflow)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -13,7 +13,7 @@ Thank you for your interest in contributing to the Federated Genotype Imputation
 - [Code Quality Standards](#code-quality-standards)
 - [Security Guidelines](#security-guidelines)
 
-## 🔄 Development Workflow
+## Development Workflow
 
 ### Branch Strategy
 - **`main`**: Production-ready code with full CI/CD validation
