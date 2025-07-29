@@ -229,7 +229,7 @@ Your PR will automatically trigger:
 - Minimal container privileges
 - Input validation and sanitization
 
-## 🔒 Security Guidelines
+## Security Guidelines
 
 ### Container Security
 - Use specific version tags (not `latest`)
@@ -249,7 +249,7 @@ Your PR will automatically trigger:
 - Avoid privileged container execution
 - Sanitize user-provided values
 
-## 🚨 Issue Reporting
+## Issue Reporting
 
 ### Bug Reports
 Use the bug report template and include:
@@ -271,7 +271,7 @@ For security vulnerabilities:
 - Compatibility considerations
 - Testing approach
 
-## 🎯 Development Tips
+## Development Tips
 
 ### Local Development Environment
 ```bash
