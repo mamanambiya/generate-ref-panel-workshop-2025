@@ -1,12 +1,12 @@
 # Federated Imputation Pipeline - Testing Framework
 
-## 🧬 GA4GH Hackathon 2025 - African Genomics Team
+## GA4GH Hackathon 2025 - African Genomics Team
 
 This directory contains a comprehensive unit testing framework for the Federated Genotype Imputation Pipeline. The tests validate individual components and the complete pipeline across multiple scenarios.
 
 ---
 
-## 📁 **Directory Structure**
+## Directory Structure
 
 ```
 tests/
@@ -31,275 +31,324 @@ tests/
 
 ---
 
-## 🧪 **Test Categories**
+## Test Categories
 
-### **1. Individual Component Tests**
+### 1. Individual Component Tests
 
-#### **ExtractRegion Task Test**
-- **File**: `unit/test_extract_region.wdl`
-- **Purpose**: Validates genomic region extraction functionality
-- **Validations**:
-  - ✅ File existence (VCF, summary, stats)
-  - ✅ Variant count accuracy
-  - ✅ Chromosome consistency  
-  - ✅ Position range validation
-  - ✅ Summary content verification
+**ExtractRegion Task Test** (`test_extract_region.wdl`)
+- Tests genomic region extraction functionality
+- Validates VCF file parsing and bcftools integration
+- Checks output file generation and statistics
+- Verifies genomic coordinate accuracy
 
-#### **QualityControl Task Test**
-- **File**: `unit/test_quality_control.wdl`
-- **Purpose**: Tests VCF filtering and quality control
-- **Validations**:
-  - ✅ MAF threshold filtering
-  - ✅ Call rate filtering
-  - ✅ Indel removal (when requested)
-  - ✅ Variant count consistency
-  - ✅ Summary report accuracy
+**QualityControl Task Test** (`test_quality_control.wdl`)
+- Tests VCF filtering and quality control
+- Validates MAF and call rate filtering
+- Checks indel removal functionality
+- Verifies QC statistics and reporting
 
-#### **MinimacConversion Task Test**
-- **File**: `unit/test_minimac_conversion.wdl`
-- **Purpose**: Validates MSAV format conversion
-- **Validations**:
-  - ✅ MSAV file creation
-  - ✅ Zstandard compression format
-  - ✅ File size reasonableness
-  - ✅ Filename accuracy
-  - ✅ Conversion summary content
+**MinimacConversion Task Test** (`test_minimac_conversion.wdl`)
+- Tests MSAV format conversion using Minimac4
+- Validates file format and compression
+- Checks conversion statistics and metadata
+- Verifies output file integrity
 
-### **2. Integration Tests**
+### 2. Integration Tests
 
-#### **Complete Pipeline Test**
-- **File**: `unit/test_complete_pipeline.wdl`
-- **Purpose**: Tests complete pipeline with multiple scenarios
-- **Test Scenarios**:
-  - **Basic**: Standard filtering (MAF≥0.01, CR≥0.95)
-  - **Strict**: Stringent filtering (MAF≥0.10, CR≥0.99)
-  - **Relaxed**: Lenient filtering (MAF≥0.001, CR≥0.80)
-- **Cross-Scenario Validations**:
-  - ✅ Format consistency across outputs
-  - ✅ Filtering effect validation
-  - ✅ Performance comparison
-  - ✅ File size analysis
+**Complete Pipeline Test** (`test_complete_pipeline.wdl`)
+- Tests the full federated imputation pipeline
+- Runs multiple filtering scenarios:
+  - Basic configuration (standard filtering)
+  - Strict filtering (high thresholds)
+  - Relaxed filtering (low thresholds)
+- Validates cross-scenario consistency
+- Comprehensive end-to-end testing
+
+**Integration Test** (`test_pipeline.wdl`)
+- Tests main pipeline workflow
+- Includes additional validation tasks
+- Generates comprehensive test reports
+- Validates production readiness
 
 ---
 
-## 🚀 **Running Tests**
+## Quick Start
 
-### **Quick Start**
+### Run All Unit Tests
+```bash
+# Navigate to tests directory
+cd tests/
 
+# Make test runner executable
+chmod +x run_unit_tests.sh
+
+# Run complete test suite
+./run_unit_tests.sh
+```
+
+### Run Individual Tests
+```bash
+# Extract Region test
+java -jar cromwell.jar run unit/test_extract_region.wdl -i inputs/unit_test_config.json
+
+# Quality Control test
+java -jar cromwell.jar run unit/test_quality_control.wdl -i inputs/qc_unit_test_config.json
+
+# Minimac Conversion test
+java -jar cromwell.jar run unit/test_minimac_conversion.wdl -i inputs/minimac_unit_test_config.json
+
+# Complete Pipeline test
+java -jar cromwell.jar run unit/test_complete_pipeline.wdl -i inputs/complete_pipeline_test_config.json
+```
+
+---
+
+## Test Output
+
+### Test Runner Output
+```
+Federated Imputation Pipeline - Unit Test Suite
+GA4GH Hackathon 2025 - African Genomics Team
+==================================================
+
+Checking prerequisites...
+All prerequisites met
+
+Running extract_region_test...
+Description: Test genomic region extraction functionality
+extract_region_test PASSED
+
+Running quality_control_test...
+Description: Test VCF quality control and filtering
+quality_control_test PASSED
+
+Running minimac_conversion_test...
+Description: Test MSAV format conversion using Minimac4
+minimac_conversion_test PASSED
+
+Running complete_pipeline_test...
+Description: Test complete pipeline with basic, strict, and relaxed filtering
+complete_pipeline_test PASSED
+
+==================================================
+Unit Test Suite Complete
+
+Results Summary:
+  Total Tests: 4
+  Passed: 4
+  Failed: 0
+  Success Rate: 100.0%
+
+All unit tests passed - Pipeline ready for production!
+```
+
+### Individual Test Reports
+
+Each test generates detailed validation reports:
+
+**ExtractRegion Validation Report**
+```
+ExtractRegion Unit Test Validation
+=================================
+Test Date: [timestamp]
+
+File Existence Tests:
+✅ Extracted VCF file exists
+✅ Summary file exists
+✅ Stats file exists
+
+Content Validation Tests:
+Variant count: 21
+✅ VCF contains variants
+✅ Chromosome matches expected (22)
+✅ Positions within expected range (16000000-16200000)
+   Actual range: 16000000-16200000
+✅ Summary contains variant count
+✅ Summary contains correct region
+
+Overall Test Result:
+TEST PASSED: ExtractRegion working correctly
+```
+
+---
+
+## Test Coverage
+
+### Unit Test Coverage
+- **ExtractRegion**: File parsing, region extraction, statistics generation
+- **QualityControl**: MAF filtering, call rate filtering, indel removal, reporting
+- **MinimacConversion**: MSAV conversion, file validation, metadata generation
+- **Pipeline Integration**: Multi-task workflow, data flow, error propagation
+
+### Validation Scope
+- Input file validation
+- Output file generation
+- Content verification
+- Format compliance
+- Error handling
+- Performance metrics
+
+### Cross-Platform Testing
+- Docker platform compatibility (`linux/amd64`)
+- Container execution validation
+- Resource allocation testing
+- Dependency verification
+
+---
+
+## Configuration
+
+### Test Data
+- **File**: `test_chr22_region_bgzip.vcf.gz`
+- **Size**: 100 variants from chromosome 22
+- **Range**: 16000000-16990000 (chr22)
+- **Format**: bgzip compressed VCF with CSI index
+
+### Input Configurations
+All test configurations use absolute paths and realistic parameters:
+
+```json
+{
+  "test_vcf": "/absolute/path/to/test_chr22_region_bgzip.vcf.gz",
+  "test_chromosome": "22",
+  "test_start": 16000000,
+  "test_end": 16200000,
+  "test_prefix": "unit_test_output"
+}
+```
+
+### Expected Results
+- **ExtractRegion**: ~21 variants in extracted region
+- **QualityControl**: 10-18 variants after filtering (depends on parameters)
+- **MinimacConversion**: Valid MSAV file (Zstandard compressed)
+- **Pipeline**: Complete MSAV panel ready for federated imputation
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Cromwell Not Found**
+```bash
+# Download Cromwell if missing
+curl -L -o cromwell.jar \
+  "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
+```
+
+**Docker Platform Issues**
+```bash
+# Pull with platform specification
+docker pull --platform linux/amd64 mamana/imputation:minimac4-4.1.6
+```
+
+**Permission Issues**
 ```bash
 # Make test runner executable
-chmod +x tests/run_unit_tests.sh
-
-# Run all unit tests
-./tests/run_unit_tests.sh
+chmod +x run_unit_tests.sh
 ```
 
-### **Individual Test Execution**
+**Path Issues**
+- Ensure test data files exist: `tests/test_chr22_region_bgzip.vcf.gz`
+- Update paths in input JSON files for your environment
+- Use absolute paths for Cromwell execution
 
+### Debug Mode
 ```bash
-# Test ExtractRegion task only
-java -jar cromwell.jar run tests/unit/test_extract_region.wdl \
-    -i tests/inputs/unit_test_config.json
-
-# Test QualityControl task only  
-java -jar cromwell.jar run tests/unit/test_quality_control.wdl \
-    -i tests/inputs/qc_unit_test_config.json
-
-# Test MinimacConversion task only
-java -jar cromwell.jar run tests/unit/test_minimac_conversion.wdl \
-    -i tests/inputs/minimac_unit_test_config.json
-
-# Test complete pipeline with multiple scenarios
-java -jar cromwell.jar run tests/unit/test_complete_pipeline.wdl \
-    -i tests/inputs/complete_pipeline_test_config.json
+# Run with verbose output
+java -jar cromwell.jar run unit/test_extract_region.wdl \
+  -i inputs/unit_test_config.json \
+  --options verbose_options.json
 ```
 
 ---
 
-## 📊 **Test Output & Reports**
+## Performance
 
-### **Automated Test Results**
-- **Location**: `test_results/unit_tests/`
-- **Main Report**: `UNIT_TEST_REPORT.md`
-- **Individual Logs**: `*_output.log`
-- **Validation Reports**: `*_validation_report.txt`
+### Expected Execution Times
+- **ExtractRegion**: 30-60 seconds
+- **QualityControl**: 45-90 seconds  
+- **MinimacConversion**: 60-120 seconds
+- **Complete Pipeline**: 3-5 minutes total
 
-### **Test Result Interpretation**
+### Resource Usage
+- **Memory**: 2-4 GB per test
+- **CPU**: 1-2 cores
+- **Storage**: 100-500 MB temporary files
 
-#### **Success Indicators**
-- ✅ All validation checks pass
-- ✅ Files created with expected formats
-- ✅ Variant counts within expected ranges
-- ✅ No error messages in logs
-
-#### **Failure Indicators**
-- ❌ Missing output files
-- ❌ Incorrect file formats
-- ❌ Variant count inconsistencies  
-- ❌ Error messages in logs
+### Optimization Tips
+- Use local test data to avoid network delays
+- Ensure sufficient Docker resources
+- Run tests on SSD storage for better I/O performance
 
 ---
 
-## 🎯 **Test Coverage**
+## Quality Assurance
 
-### **Functional Coverage**
-- [x] **Region Extraction**: All genomic coordinates and chromosome handling
-- [x] **Quality Filtering**: MAF, call rate, and variant type filters
-- [x] **Format Conversion**: VCF to MSAV transformation
-- [x] **Pipeline Integration**: Complete workflow execution
-- [x] **Parameter Handling**: Multiple configuration scenarios
+### Validation Criteria
+- All output files must be generated
+- File formats must be valid (VCF, MSAV)
+- Content must match expected patterns
+- No critical errors in execution logs
+- Resource usage within expected limits
 
-### **Data Coverage**
-- [x] **Test Dataset**: 100 variants from chr22:16000000-16990000
-- [x] **Multiple Scenarios**: Basic, strict, and relaxed filtering
-- [x] **Edge Cases**: Empty regions, strict filters, format variations
+### Acceptance Thresholds
+- Test success rate: 100%
+- Execution time: < 2x expected duration
+- Memory usage: < 150% of allocated resources
+- Output file sizes: Within 10% of expected
 
-### **Platform Coverage**
-- [x] **Docker Integration**: Containerized execution
-- [x] **Cross-Platform**: Apple Silicon (ARM64) with linux/amd64 emulation
-- [x] **WDL Compliance**: Standards-compliant workflow execution
-
----
-
-## 🔧 **Customizing Tests**
-
-### **Adding New Test Scenarios**
-
-1. **Create New WDL Test**:
-   ```wdl
-   version 1.0
-   
-   import "../../tasks/your_task.wdl" as YourTask
-   
-   workflow TestYourTask {
-       # Define test inputs and validation logic
-   }
-   ```
-
-2. **Add Input Configuration**:
-   ```json
-   {
-     "TestYourTask.input_parameter": "test_value"
-   }
-   ```
-
-3. **Update Test Runner**:
-   Add new test case to `run_unit_tests.sh`
-
-### **Modifying Test Parameters**
-
-Edit input JSON files in `tests/inputs/` to change:
-- Test regions and coordinates
-- Filtering thresholds
-- Output prefixes
-- Compression levels
-
-### **Adding Custom Validation**
-
-Enhance validation tasks in test WDL files to check:
-- Additional file properties
-- Content-specific validations
-- Performance metrics
-- Error condition handling
+### Continuous Integration
+Tests are automatically run via GitHub Actions:
+- On every push to main/develop branches
+- On all pull requests
+- Daily monitoring at 2 AM UTC
+- Manual triggers for debugging
 
 ---
 
-## 🐛 **Troubleshooting**
+## Contributing
 
-### **Common Issues**
+### Adding New Tests
+1. Create new WDL workflow in `unit/` directory
+2. Add corresponding input JSON in `inputs/` directory
+3. Update `run_unit_tests.sh` to include new test
+4. Update this documentation
 
-#### **Docker Platform Errors**
-```bash
-# Error: platform mismatch
-# Solution: Tests include --platform linux/amd64 flag
-```
+### Test Standards
+- Use descriptive test names
+- Include comprehensive validation
+- Generate detailed reports
+- Handle error cases gracefully
+- Document expected behavior
 
-#### **Missing Test Data**
-```bash
-# Error: test_chr22_region_bgzip.vcf.gz not found
-# Solution: Ensure test data is in tests/ directory
-```
-
-#### **Cromwell Download Issues**
-```bash
-# Error: cromwell.jar not found
-# Solution: Run main pipeline test first or download manually
-curl -L -o cromwell.jar https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar
-```
-
-#### **Permission Issues**
-```bash
-# Error: Permission denied
-# Solution: Make test runner executable
-chmod +x tests/run_unit_tests.sh
-```
-
-### **Log Analysis**
-
-Check these files for debugging:
-- `test_results/unit_tests/*_output.log` - Full execution logs
-- `test_results/unit_tests/*_validation_report.txt` - Detailed validation results
-- `cromwell-executions/*/call-*/execution/stderr` - Task-specific errors
+### Best Practices
+- Test edge cases and boundary conditions
+- Validate both success and failure scenarios
+- Use realistic test data
+- Minimize test execution time
+- Provide clear failure messages
 
 ---
 
-## 📈 **Performance Expectations**
+## Support
 
-### **Test Execution Times**
-- **ExtractRegion**: ~10 seconds
-- **QualityControl**: ~15 seconds  
-- **MinimacConversion**: ~10 seconds
-- **Complete Pipeline**: ~2-3 minutes (3 scenarios)
-- **Total Suite**: ~4-5 minutes
+### Documentation
+- **Main README**: `../README.md`
+- **Contributing Guide**: `../.github/CONTRIBUTING.md`
+- **WDL Documentation**: [OpenWDL Specification](https://github.com/openwdl/wdl)
 
-### **Resource Usage**
-- **Memory**: 2-4 GB per task
-- **CPU**: 1-2 cores per task
-- **Disk**: ~100 MB temporary files
-- **Network**: Container download (first run only)
+### Getting Help
+- Review test output logs in `test_results/` directory
+- Check Cromwell execution logs for detailed errors
+- Validate input file paths and permissions
+- Ensure Docker containers are accessible
 
----
-
-## ✅ **Quality Assurance**
-
-### **Test Reliability**
-- **Deterministic**: Same inputs always produce same outputs
-- **Isolated**: Each test runs independently
-- **Comprehensive**: Covers all major functionality
-- **Fast**: Complete suite runs in under 5 minutes
-
-### **Production Readiness Criteria**
-- ✅ All unit tests pass
-- ✅ All integration tests pass  
-- ✅ Performance within acceptable ranges
-- ✅ Error handling validated
-- ✅ Documentation complete
+### Contact
+- **Team**: GA4GH Hackathon 2025 - African Genomics Team
+- **Repository**: [generate-ref-panel-workshop-2025](https://github.com/mamanambiya/generate-ref-panel-workshop-2025)
+- **Issues**: Use GitHub Issues for bug reports and feature requests
 
 ---
 
-## 🤝 **Contributing**
-
-### **Adding New Tests**
-1. Create test WDL workflow
-2. Add input configuration
-3. Update test runner script
-4. Document new test case
-5. Verify all tests still pass
-
-### **Reporting Issues**
-Include in bug reports:
-- Test execution logs
-- Validation reports
-- System information
-- Steps to reproduce
-
----
-
-## 📞 **Support**
-
-- **Team**: GA4GH Hackathon 2025 - African Genomics Initiative
-- **Documentation**: Complete README files in each directory  
-- **Container**: `mamana/imputation:minimac4-4.1.6`
-- **WDL Version**: 1.0
-
-**Status**: ✅ **COMPREHENSIVE TESTING FRAMEWORK READY** 
+**The testing framework ensures production readiness for federated genotype imputation across African genomics institutions while maintaining data sovereignty.** 
