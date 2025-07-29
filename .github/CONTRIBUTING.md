@@ -43,7 +43,7 @@ git commit -m "feat: add your feature description"
 git push origin feature/your-feature-name
 ```
 
-## 🚀 CI/CD Pipeline
+## CI/CD Pipeline
 
 Our repository uses GitHub Actions for automated testing and quality assurance. The pipeline consists of three main workflows:
 
@@ -101,7 +101,7 @@ Workflow: 🔒 Security Scan - Docker & Dependencies
     └── Security recommendations
 ```
 
-## 🧪 Testing Requirements
+## Testing Requirements
 
 ### Before Submitting a PR
 
@@ -179,7 +179,7 @@ task ValidateYourTask {
 }
 ```
 
-## 📝 Pull Request Process
+## Pull Request Process
 
 ### 1. Pre-PR Checklist
 - [ ] All unit tests pass locally
@@ -208,7 +208,7 @@ Your PR will automatically trigger:
 3. **Test Validation**: Review test results and artifacts
 4. **Merge**: Approved PRs are merged to target branch
 
-## 📊 Code Quality Standards
+## Code Quality Standards
 
 ### WDL Best Practices
 - Use WDL version 1.0
