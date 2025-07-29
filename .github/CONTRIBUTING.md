@@ -300,7 +300,7 @@ For security vulnerabilities:
 - Use appropriate computing resources
 - Consider scalability implications
 
-## 📞 Support
+## Support
 
 ### Getting Help
 - **Documentation**: Check `README.md` and `tests/README.md`
@@ -316,8 +316,8 @@ For security vulnerabilities:
 
 ---
 
-## 🎉 Ready to Contribute!
+## Ready to Contribute!
 
 Thank you for contributing to the Federated Genotype Imputation Pipeline! Your contributions help advance African genomics research while maintaining the highest standards of quality and security.
 
-**Remember**: Every contribution, no matter how small, makes a difference in advancing federated genomics research across African institutions! 🧬🌍 
+**Remember**: Every contribution, no matter how small, makes a difference in advancing federated genomics research across African institutions! 
