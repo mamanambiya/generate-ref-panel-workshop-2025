@@ -1,0 +1,390 @@
+name: 🚀 Federated Imputation Pipeline - Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run integration tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_configuration:
+        description: 'Test configuration to run'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+        - standard
+        - performance
+        - stress
+
+env:
+  CROMWELL_VERSION: "85"
+  DOCKER_IMAGE: "mamana/imputation:minimac4-4.1.6"
+  JAVA_VERSION: "11"
+
+jobs:
+  integration-test:
+    name: 🔄 Integration Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    
+    strategy:
+      matrix:
+        test_config:
+          - name: "main_pipeline"
+            workflow: "workflows/federated_imputation_pipeline.wdl"
+            config: "inputs/test_local.json"
+            description: "Complete main pipeline test"
+          - name: "test_pipeline"
+            workflow: "tests/test_pipeline.wdl"
+            config: "inputs/test_local.json"
+            description: "Enhanced test pipeline with validation"
+      fail-fast: false
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: ☕ Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 📦 Cache Cromwell
+      id: cache-cromwell
+      uses: actions/cache@v4
+      with:
+        path: cromwell.jar
+        key: cromwell-${{ env.CROMWELL_VERSION }}
+
+    - name: ⬇️ Download Cromwell
+      if: steps.cache-cromwell.outputs.cache-hit != 'true'
+      run: |
+        echo "📥 Downloading Cromwell v${{ env.CROMWELL_VERSION }}..."
+        curl -L -o cromwell.jar \
+          "https://github.com/broadinstitute/cromwell/releases/download/${{ env.CROMWELL_VERSION }}/cromwell-${{ env.CROMWELL_VERSION }}.jar"
+        echo "✅ Cromwell downloaded successfully"
+
+    - name: 🐳 Pull Docker Image
+      run: |
+        echo "📥 Pulling Docker image: ${{ env.DOCKER_IMAGE }}"
+        docker pull --platform linux/amd64 ${{ env.DOCKER_IMAGE }}
+        echo "✅ Docker image pulled successfully"
+
+    - name: 📂 Prepare Integration Test Environment
+      run: |
+        echo "📂 Setting up integration test environment..."
+        mkdir -p test_results/integration
+        echo "Current working directory: $(pwd)"
+        echo "Available test files:"
+        ls -la tests/
+        echo "Available workflows:"
+        ls -la workflows/
+        echo "Available inputs:"
+        ls -la inputs/
+
+    - name: 🔧 Update Input Configuration for GitHub Actions
+      run: |
+        echo "🔧 Updating input configuration with absolute paths..."
+        
+        # Get absolute path to test data
+        TEST_VCF_PATH="$(pwd)/tests/test_chr22_region_bgzip.vcf.gz"
+        
+        # Update test_local.json for GitHub Actions
+        cp "inputs/test_local.json" "inputs/test_local.json.backup"
+        
+        # Update path in JSON file
+        sed -i "s|/Users/mamana/projects-uct/afrigen-d/ga4gh_hackathon_2025/prepare_minimac4_data/tests/test_chr22_region_bgzip.vcf.gz|$TEST_VCF_PATH|g" "inputs/test_local.json"
+        
+        echo "Updated configuration:"
+        cat "inputs/test_local.json"
+
+    - name: 🧪 Run Integration Test - ${{ matrix.test_config.name }}
+      run: |
+        echo "🧪 Running ${{ matrix.test_config.name }} integration test..."
+        echo "Description: ${{ matrix.test_config.description }}"
+        echo "Workflow: ${{ matrix.test_config.workflow }}"
+        echo "Config: ${{ matrix.test_config.config }}"
+        echo ""
+        
+        # Run the integration test
+        echo "Starting Cromwell execution..."
+        timeout 75m java -jar cromwell.jar run \
+          "${{ matrix.test_config.workflow }}" \
+          -i "${{ matrix.test_config.config }}" \
+          > "test_results/integration/${{ matrix.test_config.name }}_output.log" 2>&1
+        
+        echo "✅ ${{ matrix.test_config.name }} integration test completed successfully"
+
+    - name: 📊 Extract Integration Test Results
+      if: always()
+      run: |
+        echo "📊 Extracting integration test results for ${{ matrix.test_config.name }}..."
+        
+        # Find all output files
+        echo "📁 Generated files:"
+        find cromwell-executions -name "*.msav" -o -name "*_summary.txt" -o -name "*_stats.txt" -o -name "*validation_report.txt" | head -20
+        
+        # Find validation report
+        VALIDATION_REPORT=$(find cromwell-executions -name "*validation_report.txt" -type f | head -1)
+        
+        if [[ -n "$VALIDATION_REPORT" && -f "$VALIDATION_REPORT" ]]; then
+          echo "📄 Found validation report: $VALIDATION_REPORT"
+          cp "$VALIDATION_REPORT" "test_results/integration/${{ matrix.test_config.name }}_validation_report.txt"
+          
+          echo "📋 Integration Test Validation Report:"
+          echo "======================================"
+          cat "$VALIDATION_REPORT"
+          echo "======================================"
+          
+          # Check if test passed
+          if grep -q "TEST PASSED\|ALL TESTS PASSED\|Pipeline completed successfully" "$VALIDATION_REPORT"; then
+            echo "✅ ${{ matrix.test_config.name }}: PASSED"
+            echo "PASSED" > "test_results/integration/${{ matrix.test_config.name }}_result.txt"
+          else
+            echo "❌ ${{ matrix.test_config.name }}: FAILED"
+            echo "FAILED" > "test_results/integration/${{ matrix.test_config.name }}_result.txt"
+          fi
+        else
+          echo "⚠️ No validation report found - checking Cromwell output for success"
+          
+          # Check Cromwell output for success indicators
+          if grep -q "WorkflowSucceeded" "test_results/integration/${{ matrix.test_config.name }}_output.log"; then
+            echo "✅ ${{ matrix.test_config.name }}: PASSED (based on Cromwell output)"
+            echo "PASSED" > "test_results/integration/${{ matrix.test_config.name }}_result.txt"
+          else
+            echo "❌ ${{ matrix.test_config.name }}: FAILED (no validation report, no success indicator)"
+            echo "FAILED" > "test_results/integration/${{ matrix.test_config.name }}_result.txt"
+          fi
+        fi
+        
+        # Extract key output files
+        echo ""
+        echo "📦 Extracting key output files..."
+        
+        # Find and copy MSAV files
+        find cromwell-executions -name "*.msav" -type f | while read msav_file; do
+          if [[ -f "$msav_file" ]]; then
+            echo "Found MSAV file: $msav_file"
+            cp "$msav_file" "test_results/integration/${{ matrix.test_config.name }}_output.msav"
+            
+            # Get file info
+            file_size=$(stat -c%s "$msav_file" 2>/dev/null || stat -f%z "$msav_file")
+            file_type=$(file "$msav_file")
+            
+            echo "MSAV file size: $file_size bytes" > "test_results/integration/${{ matrix.test_config.name }}_output_info.txt"
+            echo "MSAV file type: $file_type" >> "test_results/integration/${{ matrix.test_config.name }}_output_info.txt"
+          fi
+        done
+        
+        # Extract summary files
+        find cromwell-executions -name "*_summary.txt" -type f | head -3 | while read summary_file; do
+          if [[ -f "$summary_file" ]]; then
+            echo "Found summary file: $summary_file"
+            cat "$summary_file" >> "test_results/integration/${{ matrix.test_config.name }}_summaries.txt"
+            echo "---" >> "test_results/integration/${{ matrix.test_config.name }}_summaries.txt"
+          fi
+        done
+
+    - name: 📊 Generate Integration Test Report
+      if: always()
+      run: |
+        echo "📊 Generating integration test report..."
+        
+        REPORT_FILE="test_results/integration/${{ matrix.test_config.name }}_integration_report.md"
+        
+        echo "# Integration Test Report - ${{ matrix.test_config.name }}" > "$REPORT_FILE"
+        echo "## GA4GH Hackathon 2025 - African Genomics Team" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        echo "**Test Date:** $(date -u)" >> "$REPORT_FILE"
+        echo "**Workflow:** ${{ matrix.test_config.workflow }}" >> "$REPORT_FILE"
+        echo "**Configuration:** ${{ matrix.test_config.config }}" >> "$REPORT_FILE"
+        echo "**Description:** ${{ matrix.test_config.description }}" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        
+        # Test result
+        if [[ -f "test_results/integration/${{ matrix.test_config.name }}_result.txt" ]]; then
+          result=$(cat "test_results/integration/${{ matrix.test_config.name }}_result.txt")
+          if [[ "$result" == "PASSED" ]]; then
+            echo "## ✅ Test Result: PASSED" >> "$REPORT_FILE"
+          else
+            echo "## ❌ Test Result: FAILED" >> "$REPORT_FILE"
+          fi
+        else
+          echo "## ⚠️ Test Result: UNKNOWN" >> "$REPORT_FILE"
+        fi
+        
+        echo "" >> "$REPORT_FILE"
+        
+        # Output file information
+        if [[ -f "test_results/integration/${{ matrix.test_config.name }}_output_info.txt" ]]; then
+          echo "## 📦 Generated Output Files" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+          cat "test_results/integration/${{ matrix.test_config.name }}_output_info.txt" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Summary information
+        if [[ -f "test_results/integration/${{ matrix.test_config.name }}_summaries.txt" ]]; then
+          echo "## 📋 Pipeline Summaries" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+          cat "test_results/integration/${{ matrix.test_config.name }}_summaries.txt" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Validation report
+        if [[ -f "test_results/integration/${{ matrix.test_config.name }}_validation_report.txt" ]]; then
+          echo "## 🔍 Detailed Validation Report" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+          cat "test_results/integration/${{ matrix.test_config.name }}_validation_report.txt" >> "$REPORT_FILE"
+          echo '```' >> "$REPORT_FILE"
+        fi
+        
+        echo "📄 Integration test report generated: $REPORT_FILE"
+
+    - name: 📤 Upload Integration Test Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results-${{ matrix.test_config.name }}
+        path: |
+          test_results/integration/${{ matrix.test_config.name }}_*
+        retention-days: 30
+
+    - name: 🧹 Cleanup Integration Test
+      if: always()
+      run: |
+        echo "🧹 Cleaning up integration test files..."
+        # Keep key output files but clean up large execution directories
+        find cromwell-executions -type d -name "call-*" -exec rm -rf {} + 2>/dev/null || true
+        find cromwell-executions -name "*.log" -size +20M -delete 2>/dev/null || true
+        echo "✅ Cleanup completed"
+
+  integration-summary:
+    name: 📊 Integration Test Summary
+    needs: integration-test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📥 Download All Integration Test Results
+      uses: actions/download-artifact@v4
+      with:
+        path: all_integration_results
+        pattern: integration-test-results-*
+
+    - name: 📊 Generate Integration Test Summary
+      run: |
+        echo "📊 Generating integration test summary..."
+        
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        
+        echo "# 🚀 Federated Imputation Pipeline - Integration Test Results" > integration_summary.md
+        echo "## GA4GH Hackathon 2025 - African Genomics Team" >> integration_summary.md
+        echo "" >> integration_summary.md
+        echo "**Test Run Date:** $(date -u)" >> integration_summary.md
+        echo "**GitHub Action:** ${{ github.workflow }}" >> integration_summary.md
+        echo "**Commit:** ${{ github.sha }}" >> integration_summary.md
+        echo "**Branch:** ${{ github.ref_name }}" >> integration_summary.md
+        echo "" >> integration_summary.md
+        
+        echo "## 📋 Integration Test Results" >> integration_summary.md
+        echo "" >> integration_summary.md
+        echo "| Test Name | Status | Description |" >> integration_summary.md
+        echo "|-----------|--------|-------------|" >> integration_summary.md
+        
+        # Process each test result
+        for result_dir in all_integration_results/integration-test-results-*; do
+          if [[ -d "$result_dir" ]]; then
+            test_name=$(basename "$result_dir" | sed 's/integration-test-results-//')
+            result_file="$result_dir/${test_name}_result.txt"
+            
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            
+            if [[ -f "$result_file" ]]; then
+              result=$(cat "$result_file")
+              case "$result" in
+                "PASSED")
+                  echo "| $test_name | ✅ PASSED | Integration test completed successfully |" >> integration_summary.md
+                  PASSED_TESTS=$((PASSED_TESTS + 1))
+                  ;;
+                "FAILED")
+                  echo "| $test_name | ❌ FAILED | Integration test encountered errors |" >> integration_summary.md
+                  FAILED_TESTS=$((FAILED_TESTS + 1))
+                  ;;
+                *)
+                  echo "| $test_name | ⚠️ UNKNOWN | Integration test status unclear |" >> integration_summary.md
+                  FAILED_TESTS=$((FAILED_TESTS + 1))
+                  ;;
+              esac
+            else
+              echo "| $test_name | ⚠️ NO RESULT | Result file not found |" >> integration_summary.md
+              FAILED_TESTS=$((FAILED_TESTS + 1))
+            fi
+          fi
+        done
+        
+        echo "" >> integration_summary.md
+        echo "## 📈 Integration Test Statistics" >> integration_summary.md
+        echo "" >> integration_summary.md
+        echo "- **Total Integration Tests:** $TOTAL_TESTS" >> integration_summary.md
+        echo "- **Passed:** $PASSED_TESTS ✅" >> integration_summary.md
+        echo "- **Failed:** $FAILED_TESTS ❌" >> integration_summary.md
+        
+        if [[ $TOTAL_TESTS -gt 0 ]]; then
+          SUCCESS_RATE=$(echo "scale=1; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)
+          echo "- **Success Rate:** ${SUCCESS_RATE}% 📊" >> integration_summary.md
+        fi
+        
+        echo "" >> integration_summary.md
+        
+        # Overall status
+        if [[ $FAILED_TESTS -eq 0 && $PASSED_TESTS -gt 0 ]]; then
+          echo "## 🎉 Overall Result: SUCCESS" >> integration_summary.md
+          echo "" >> integration_summary.md
+          echo "All integration tests passed! The complete federated imputation pipeline is functioning correctly end-to-end." >> integration_summary.md
+          echo "INTEGRATION_STATUS=success" >> $GITHUB_ENV
+        else
+          echo "## ❌ Overall Result: FAILURE" >> integration_summary.md
+          echo "" >> integration_summary.md
+          echo "Some integration tests failed. The pipeline may have issues in end-to-end execution." >> integration_summary.md
+          echo "INTEGRATION_STATUS=failure" >> $GITHUB_ENV
+        fi
+        
+        echo "📄 Integration test summary generated"
+        cat integration_summary.md
+
+    - name: 📤 Upload Integration Test Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-summary
+        path: integration_summary.md
+        retention-days: 90
+
+    - name: ✅ Set Integration Test Status
+      run: |
+        echo "Final integration test status: $INTEGRATION_STATUS"
+        
+        if [[ "$INTEGRATION_STATUS" == "failure" ]]; then
+          echo "❌ Integration tests failed"
+          exit 1
+        else
+          echo "✅ All integration tests passed successfully!"
+          exit 0
+        fi 

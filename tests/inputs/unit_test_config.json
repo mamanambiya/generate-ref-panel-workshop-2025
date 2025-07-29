@@ -1,0 +1,7 @@
+{
+  "TestExtractRegion.test_vcf": "/Users/mamana/projects-uct/afrigen-d/ga4gh_hackathon_2025/prepare_minimac4_data/tests/test_chr22_region_bgzip.vcf.gz",
+  "TestExtractRegion.test_chromosome": "22",
+  "TestExtractRegion.test_start": 16000000,
+  "TestExtractRegion.test_end": 16200000,
+  "TestExtractRegion.test_prefix": "unit_test_extracted"
+} 

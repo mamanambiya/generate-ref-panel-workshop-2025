@@ -1,0 +1,381 @@
+name: 🧬 Federated Imputation Pipeline - Unit Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'workflows/**'
+      - 'tasks/**'
+      - 'tests/**'
+      - 'inputs/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'workflows/**'
+      - 'tasks/**'
+      - 'tests/**'
+      - 'inputs/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - extract_region
+        - quality_control
+        - minimac_conversion
+        - complete_pipeline
+
+env:
+  CROMWELL_VERSION: "85"
+  DOCKER_IMAGE: "mamana/imputation:minimac4-4.1.6"
+  JAVA_VERSION: "11"
+
+jobs:
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    strategy:
+      matrix:
+        test_scenario:
+          - name: "extract_region"
+            workflow: "tests/unit/test_extract_region.wdl"
+            config: "tests/inputs/unit_test_config.json"
+            description: "Test genomic region extraction"
+          - name: "quality_control"
+            workflow: "tests/unit/test_quality_control.wdl"
+            config: "tests/inputs/qc_unit_test_config.json"
+            description: "Test VCF quality control and filtering"
+          - name: "minimac_conversion"
+            workflow: "tests/unit/test_minimac_conversion.wdl"
+            config: "tests/inputs/minimac_unit_test_config.json"
+            description: "Test MSAV format conversion"
+          - name: "complete_pipeline"
+            workflow: "tests/unit/test_complete_pipeline.wdl"
+            config: "tests/inputs/complete_pipeline_test_config.json"
+            description: "Test complete pipeline integration"
+      fail-fast: false
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: ☕ Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 📦 Cache Cromwell
+      id: cache-cromwell
+      uses: actions/cache@v4
+      with:
+        path: cromwell.jar
+        key: cromwell-${{ env.CROMWELL_VERSION }}
+
+    - name: ⬇️ Download Cromwell
+      if: steps.cache-cromwell.outputs.cache-hit != 'true'
+      run: |
+        echo "📥 Downloading Cromwell v${{ env.CROMWELL_VERSION }}..."
+        curl -L -o cromwell.jar \
+          "https://github.com/broadinstitute/cromwell/releases/download/${{ env.CROMWELL_VERSION }}/cromwell-${{ env.CROMWELL_VERSION }}.jar"
+        echo "✅ Cromwell downloaded successfully"
+
+    - name: 🔍 Verify Cromwell Installation
+      run: |
+        ls -la cromwell.jar
+        java -jar cromwell.jar --version
+
+    - name: 🐳 Pull Docker Image
+      run: |
+        echo "📥 Pulling Docker image: ${{ env.DOCKER_IMAGE }}"
+        docker pull --platform linux/amd64 ${{ env.DOCKER_IMAGE }}
+        echo "✅ Docker image pulled successfully"
+
+    - name: 🔍 Verify Docker Image
+      run: |
+        echo "🔍 Verifying Docker image contents..."
+        docker run --rm --platform linux/amd64 ${{ env.DOCKER_IMAGE }} which bcftools
+        docker run --rm --platform linux/amd64 ${{ env.DOCKER_IMAGE }} which minimac4
+        docker run --rm --platform linux/amd64 ${{ env.DOCKER_IMAGE }} bcftools --version | head -3
+        docker run --rm --platform linux/amd64 ${{ env.DOCKER_IMAGE }} minimac4 --help | head -5
+
+    - name: 📂 Prepare Test Environment
+      run: |
+        echo "📂 Setting up test environment..."
+        mkdir -p test_results/github_actions
+        echo "Current working directory: $(pwd)"
+        echo "Available files:"
+        ls -la tests/
+        echo "Test data:"
+        ls -la tests/test_*
+
+    - name: 🔧 Update Input Configurations for GitHub Actions
+      run: |
+        echo "🔧 Updating input configurations with absolute paths..."
+        
+        # Get absolute path to test data
+        TEST_VCF_PATH="$(pwd)/tests/test_chr22_region_bgzip.vcf.gz"
+        
+        # Update all input configuration files
+        for config_file in tests/inputs/*.json; do
+          echo "Updating $config_file..."
+          # Create backup
+          cp "$config_file" "$config_file.backup"
+          
+          # Update path in JSON file
+          sed -i "s|/Users/mamana/projects-uct/afrigen-d/ga4gh_hackathon_2025/prepare_minimac4_data/tests/test_chr22_region_bgzip.vcf.gz|$TEST_VCF_PATH|g" "$config_file"
+          
+          echo "Updated configuration:"
+          cat "$config_file"
+          echo "---"
+        done
+
+    - name: 🧪 Run Unit Test - ${{ matrix.test_scenario.name }}
+      run: |
+        echo "🧪 Running ${{ matrix.test_scenario.name }} test..."
+        echo "Description: ${{ matrix.test_scenario.description }}"
+        echo "Workflow: ${{ matrix.test_scenario.workflow }}"
+        echo "Config: ${{ matrix.test_scenario.config }}"
+        echo ""
+        
+        # Run the test
+        echo "Starting Cromwell execution..."
+        timeout 45m java -jar cromwell.jar run \
+          "${{ matrix.test_scenario.workflow }}" \
+          -i "${{ matrix.test_scenario.config }}" \
+          > "test_results/github_actions/${{ matrix.test_scenario.name }}_output.log" 2>&1
+        
+        echo "✅ ${{ matrix.test_scenario.name }} test completed successfully"
+
+    - name: 📊 Extract Test Results
+      if: always()
+      run: |
+        echo "📊 Extracting test results for ${{ matrix.test_scenario.name }}..."
+        
+        # Find validation report
+        VALIDATION_REPORT=$(find cromwell-executions -name "*validation_report.txt" -type f | head -1)
+        
+        if [[ -n "$VALIDATION_REPORT" && -f "$VALIDATION_REPORT" ]]; then
+          echo "📄 Found validation report: $VALIDATION_REPORT"
+          cp "$VALIDATION_REPORT" "test_results/github_actions/${{ matrix.test_scenario.name }}_validation_report.txt"
+          
+          echo "📋 Validation Report Contents:"
+          echo "==============================="
+          cat "$VALIDATION_REPORT"
+          echo "==============================="
+          
+          # Check if test passed
+          if grep -q "TEST PASSED\|ALL TESTS PASSED" "$VALIDATION_REPORT"; then
+            echo "✅ ${{ matrix.test_scenario.name }}: PASSED"
+            echo "PASSED" > "test_results/github_actions/${{ matrix.test_scenario.name }}_result.txt"
+          else
+            echo "❌ ${{ matrix.test_scenario.name }}: FAILED"
+            echo "FAILED" > "test_results/github_actions/${{ matrix.test_scenario.name }}_result.txt"
+          fi
+        else
+          echo "⚠️ No validation report found"
+          echo "UNKNOWN" > "test_results/github_actions/${{ matrix.test_scenario.name }}_result.txt"
+        fi
+        
+        # Extract key metrics from Cromwell output
+        echo ""
+        echo "📈 Cromwell Execution Summary:"
+        echo "=============================="
+        if [[ -f "test_results/github_actions/${{ matrix.test_scenario.name }}_output.log" ]]; then
+          grep -E "(WorkflowSucceeded|WorkflowFailed|Final Outputs)" "test_results/github_actions/${{ matrix.test_scenario.name }}_output.log" || echo "No summary found"
+        fi
+
+    - name: 📤 Upload Test Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.test_scenario.name }}
+        path: |
+          test_results/github_actions/${{ matrix.test_scenario.name }}_*.txt
+          test_results/github_actions/${{ matrix.test_scenario.name }}_*.log
+        retention-days: 30
+
+    - name: 🧹 Cleanup Test Execution
+      if: always()
+      run: |
+        echo "🧹 Cleaning up test execution files..."
+        # Keep validation reports but clean up large execution directories
+        find cromwell-executions -type d -name "call-*" -exec rm -rf {} + 2>/dev/null || true
+        find cromwell-executions -name "*.log" -size +10M -delete 2>/dev/null || true
+        echo "✅ Cleanup completed"
+
+  test-summary:
+    name: 📊 Test Summary
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📥 Download All Test Results
+      uses: actions/download-artifact@v4
+      with:
+        path: all_test_results
+        pattern: test-results-*
+
+    - name: 📊 Generate Test Summary
+      run: |
+        echo "📊 Generating comprehensive test summary..."
+        
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
+        FAILED_TESTS=0
+        UNKNOWN_TESTS=0
+        
+        echo "# 🧬 Federated Imputation Pipeline - Test Results" > test_summary.md
+        echo "## GA4GH Hackathon 2025 - African Genomics Team" >> test_summary.md
+        echo "" >> test_summary.md
+        echo "**Test Run Date:** $(date -u)" >> test_summary.md
+        echo "**GitHub Action:** ${{ github.workflow }}" >> test_summary.md
+        echo "**Commit:** ${{ github.sha }}" >> test_summary.md
+        echo "**Branch:** ${{ github.ref_name }}" >> test_summary.md
+        echo "" >> test_summary.md
+        
+        echo "## 📋 Test Results Summary" >> test_summary.md
+        echo "" >> test_summary.md
+        echo "| Test Name | Status | Description |" >> test_summary.md
+        echo "|-----------|--------|-------------|" >> test_summary.md
+        
+        # Process each test result
+        for result_dir in all_test_results/test-results-*; do
+          if [[ -d "$result_dir" ]]; then
+            test_name=$(basename "$result_dir" | sed 's/test-results-//')
+            result_file="$result_dir/${test_name}_result.txt"
+            
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            
+            if [[ -f "$result_file" ]]; then
+              result=$(cat "$result_file")
+              case "$result" in
+                "PASSED")
+                  echo "| $test_name | ✅ PASSED | Test completed successfully |" >> test_summary.md
+                  PASSED_TESTS=$((PASSED_TESTS + 1))
+                  ;;
+                "FAILED")
+                  echo "| $test_name | ❌ FAILED | Test encountered errors |" >> test_summary.md
+                  FAILED_TESTS=$((FAILED_TESTS + 1))
+                  ;;
+                *)
+                  echo "| $test_name | ⚠️ UNKNOWN | Test status unclear |" >> test_summary.md
+                  UNKNOWN_TESTS=$((UNKNOWN_TESTS + 1))
+                  ;;
+              esac
+            else
+              echo "| $test_name | ⚠️ NO RESULT | Result file not found |" >> test_summary.md
+              UNKNOWN_TESTS=$((UNKNOWN_TESTS + 1))
+            fi
+          fi
+        done
+        
+        echo "" >> test_summary.md
+        echo "## 📈 Statistics" >> test_summary.md
+        echo "" >> test_summary.md
+        echo "- **Total Tests:** $TOTAL_TESTS" >> test_summary.md
+        echo "- **Passed:** $PASSED_TESTS ✅" >> test_summary.md
+        echo "- **Failed:** $FAILED_TESTS ❌" >> test_summary.md
+        echo "- **Unknown:** $UNKNOWN_TESTS ⚠️" >> test_summary.md
+        
+        if [[ $TOTAL_TESTS -gt 0 ]]; then
+          SUCCESS_RATE=$(echo "scale=1; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)
+          echo "- **Success Rate:** ${SUCCESS_RATE}% 📊" >> test_summary.md
+        fi
+        
+        echo "" >> test_summary.md
+        
+        # Overall status
+        if [[ $FAILED_TESTS -eq 0 && $UNKNOWN_TESTS -eq 0 && $PASSED_TESTS -gt 0 ]]; then
+          echo "## 🎉 Overall Result: SUCCESS" >> test_summary.md
+          echo "" >> test_summary.md
+          echo "All unit tests passed successfully! The federated imputation pipeline is ready for production use." >> test_summary.md
+          echo "TEST_STATUS=success" >> $GITHUB_ENV
+        elif [[ $FAILED_TESTS -gt 0 ]]; then
+          echo "## ❌ Overall Result: FAILURE" >> test_summary.md
+          echo "" >> test_summary.md
+          echo "Some unit tests failed. Please review the detailed test reports and fix any issues before deployment." >> test_summary.md
+          echo "TEST_STATUS=failure" >> $GITHUB_ENV
+        else
+          echo "## ⚠️ Overall Result: INCOMPLETE" >> test_summary.md
+          echo "" >> test_summary.md
+          echo "Test execution was incomplete or inconclusive. Please review the test logs for more information." >> test_summary.md
+          echo "TEST_STATUS=incomplete" >> $GITHUB_ENV
+        fi
+        
+        # Add detailed validation reports
+        echo "" >> test_summary.md
+        echo "## 📄 Detailed Test Reports" >> test_summary.md
+        echo "" >> test_summary.md
+        
+        for result_dir in all_test_results/test-results-*; do
+          if [[ -d "$result_dir" ]]; then
+            test_name=$(basename "$result_dir" | sed 's/test-results-//')
+            validation_file="$result_dir/${test_name}_validation_report.txt"
+            
+            if [[ -f "$validation_file" ]]; then
+              echo "### $test_name Test Details" >> test_summary.md
+              echo "" >> test_summary.md
+              echo '```' >> test_summary.md
+              cat "$validation_file" >> test_summary.md
+              echo '```' >> test_summary.md
+              echo "" >> test_summary.md
+            fi
+          fi
+        done
+        
+        echo "📄 Test summary generated successfully"
+        echo ""
+        echo "=== TEST SUMMARY ==="
+        cat test_summary.md
+
+    - name: 📤 Upload Test Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-summary
+        path: test_summary.md
+        retention-days: 90
+
+    - name: 💬 Comment Test Results on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const testSummary = fs.readFileSync('test_summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: testSummary
+          });
+
+    - name: ✅ Set Final Status
+      run: |
+        echo "Final test status: $TEST_STATUS"
+        
+        if [[ "$TEST_STATUS" == "failure" ]]; then
+          echo "❌ Unit tests failed - blocking merge"
+          exit 1
+        elif [[ "$TEST_STATUS" == "incomplete" ]]; then
+          echo "⚠️ Unit tests incomplete - review required"
+          exit 1
+        else
+          echo "✅ All unit tests passed successfully!"
+          exit 0
+        fi 

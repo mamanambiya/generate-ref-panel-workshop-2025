@@ -1,0 +1,6 @@
+{
+  "TestCompletePipeline.test_vcf": "/Users/mamana/projects-uct/afrigen-d/ga4gh_hackathon_2025/prepare_minimac4_data/tests/test_chr22_region_bgzip.vcf.gz",
+  "TestCompletePipeline.test_chromosome": "22",
+  "TestCompletePipeline.test_start": 16000000,
+  "TestCompletePipeline.test_end": 16990000
+} 
