@@ -1,0 +1,54 @@
+name: Test WDL Workflows
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '*.wdl'
+      - '*.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '*.wdl'
+      - '*.json'
+  workflow_dispatch:
+
+jobs:
+  validate-wdl:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Download Cromwell
+      run: |
+        wget -q https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar
+        mv cromwell-85.jar cromwell.jar
+
+    - name: Validate WDL files
+      run: |
+        echo "🧬 Validating WDL workflows for GA4GH Hackathon 2025..."
+        for wdl_file in *.wdl; do
+          echo "Validating $wdl_file..."
+          java -jar cromwell.jar validate "$wdl_file"
+        done
+
+    - name: Validate JSON inputs
+      run: |
+        echo "📋 Validating JSON input files..."
+        for json_file in test_input*.json; do
+          echo "Checking $json_file..."
+          python3 -m json.tool "$json_file" > /dev/null
+        done
+
+    - name: Summary
+      run: |
+        echo "✅ All WDL workflows validated successfully!"
+        echo "🎉 Ready for GA4GH Hackathon 2025!" 

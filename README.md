@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WDL](https://img.shields.io/badge/WDL-1.0-blue.svg)](https://github.com/openwdl/wdl)
 [![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](https://hub.docker.com/r/mamana/imputation)
+[![Build and Push Docker Image](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/docker-build.yml/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/docker-build.yml)
+[![Test WDL Workflows](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/test-wdl.yml/badge.svg)](https://github.com/mamanambiya/generate-ref-panel-workshop-2025/actions/workflows/test-wdl.yml)
 
 ## GA4GH Hackathon 2025 - African Genomics Team
 
@@ -43,11 +45,14 @@ A production-ready WDL workflow for processing VCF files into MSAV format to ena
 
 ### 2. Run Test Pipeline
 ```bash
-# Pull the container
-docker pull mamana/imputation:minimac4-4.1.6
+# Pull the container (with specific SHA256 for security)
+docker pull mamana/minimac4-all@sha256:58d007608d94855df2abd67076795f20136e1e97e6a9f65afc3e54c373bd1d8f
+
+# Or simply pull the latest tag
+docker pull mamana/minimac4-all
 
 # Run test workflow
-java -jar cromwell.jar run workflows/federated_imputation_pipeline.wdl -i inputs/test_local.json
+java -jar cromwell.jar run federated_imputation_pipeline.wdl -i test_input.json
 ```
 
 ### 3. Expected Output
@@ -57,15 +62,12 @@ java -jar cromwell.jar run workflows/federated_imputation_pipeline.wdl -i inputs
 
 ## Workflow Architecture
 
-### Modular Design
+### Simplified Design
 ```
-workflows/
-├── federated_imputation_pipeline.wdl    # Main orchestration workflow
-│
-tasks/
-├── extract_region.wdl                   # Genomic region extraction
-├── quality_control.wdl                  # VCF filtering and QC
-└── minimac_conversion.wdl               # MSAV format conversion
+federated_imputation_pipeline.wdl        # Single WDL file with all tasks
+test_input.json                          # Test configuration
+test_chr22_region_bgzip.vcf.gz           # Test data
+test_chr22_region_bgzip.vcf.gz.csi       # Test data index
 ```
 
 ### Pipeline Flow
@@ -86,7 +88,7 @@ graph LR
 ## Installation
 
 ### Container Requirements
-The pipeline uses the validated container: `mamana/imputation:minimac4-4.1.6`
+The pipeline uses the validated container: `mamana/imputation:minimac4-all`
 
 **Contains:**
 - Minimac4 v4.1.6 (MSAV conversion)
@@ -100,10 +102,10 @@ git clone https://github.com/mamanambiya/generate-ref-panel-workshop-2025.git
 cd generate-ref-panel-workshop-2025
 
 # Pull container
-docker pull mamana/imputation:minimac4-4.1.6
+docker pull mamana/imputation:minimac4-all
 
 # Download Cromwell (if needed)
-wget https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar
+curl -L -o cromwell.jar https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar
 ```
 
 ## Usage
@@ -126,10 +128,21 @@ Create an input JSON file based on your requirements:
 **For Local Testing**
 ```json
 {
-  "FederatedImputationPipeline.input_vcf": "/data/test_chr22.vcf.gz",
+  "FederatedImputationPipeline.input_vcf": "test_chr22_region_bgzip.vcf.gz",
   "FederatedImputationPipeline.chromosome": "22",
   "FederatedImputationPipeline.start_position": 16000000,
-  "FederatedImputationPipeline.end_position": 16200000,
+  "FederatedImputationPipeline.end_position": 16990000,
+  "FederatedImputationPipeline.output_prefix": "test_panel"
+}
+```
+
+**For Azure Batch**
+```json
+{
+  "FederatedImputationPipeline.input_vcf": "$AZ_BATCH_TASK_WORKING_DIR/test_chr22_region_bgzip.vcf.gz",
+  "FederatedImputationPipeline.chromosome": "22",
+  "FederatedImputationPipeline.start_position": 16000000,
+  "FederatedImputationPipeline.end_position": 16990000,
   "FederatedImputationPipeline.output_prefix": "test_panel"
 }
 ```
@@ -138,13 +151,13 @@ Create an input JSON file based on your requirements:
 
 **Local Execution with Cromwell**
 ```bash
-java -jar cromwell-85.jar run \
-  workflows/federated_imputation_pipeline.wdl \
-  -i inputs/production.json
+java -jar cromwell.jar run \
+  federated_imputation_pipeline.wdl \
+  -i test_input.json
 ```
 
 **DNAstack Workbench**
-1. Upload `workflows/federated_imputation_pipeline.wdl`
+1. Upload `federated_imputation_pipeline.wdl`
 2. Upload input JSON configuration
 3. Execute through web interface
 
@@ -169,53 +182,20 @@ java -jar cromwell-85.jar run \
 
 ## Testing
 
-### Automated CI/CD Testing
-The pipeline includes comprehensive GitHub Actions workflows for automated testing:
+### Quick Testing
+Run the pipeline with included test data to verify functionality:
 
-#### Unit Tests - Individual Component Testing
-- **Triggers**: Every push/PR to `main`/`develop` branches
-- **Tests**: 4 individual component unit tests
-  - `ExtractRegion` task validation
-  - `QualityControl` task validation  
-  - `MinimacConversion` task validation
-  - Complete pipeline integration testing
-- **Matrix Strategy**: Parallel execution for faster feedback
-- **Artifacts**: Test reports, validation results, logs
-- **Status**: Automated via GitHub Actions on push/PR
-
-#### Integration Tests - End-to-End Pipeline Testing  
-- **Triggers**: Push to `main`, daily at 2 AM UTC, manual dispatch
-- **Tests**: Complete workflow execution with validation
-  - Main pipeline execution
-  - Enhanced test pipeline with validation tasks
-- **Outputs**: MSAV files, comprehensive reports, performance metrics
-- **Status**: Automated via GitHub Actions daily and on main branch changes
-
-#### Local Unit Testing
+#### Local Testing
 ```bash
-# Run comprehensive unit test suite locally
-cd tests/
-chmod +x run_unit_tests.sh
-./run_unit_tests.sh
+# Run the pipeline with test data
+java -jar cromwell.jar run federated_imputation_pipeline.wdl -i test_input.json
 
-# Run individual unit tests
-java -jar cromwell.jar run tests/unit/test_extract_region.wdl -i tests/inputs/unit_test_config.json
+# Validate output
+ls -la test_federated_panel*
+file test_federated_panel.msav
 ```
 
-#### Manual Integration Testing
-```bash
-# Run complete pipeline test
-java -jar cromwell.jar run tests/test_pipeline.wdl -i inputs/test_local.json
 
-# Run main pipeline
-java -jar cromwell.jar run workflows/federated_imputation_pipeline.wdl -i inputs/test_local.json
-```
-
-#### Test Results & Reporting
-- **Automatic PR Comments**: Test results posted as PR comments
-- **Detailed Reports**: Validation reports with pass/fail status
-- **Artifacts Storage**: 30-90 day retention for test outputs
-- **Success Metrics**: Real-time success rates and statistics
 
 ### Manual Validation
 ```bash
@@ -229,68 +209,41 @@ bcftools view -H output/quality_controlled.vcf.gz | wc -l
 
 ### Test Data
 - `test_chr22_region_bgzip.vcf.gz` - 100 variants from chromosome 22
+- `test_chr22_region_bgzip.vcf.gz.csi` - Index file
+- `test_input.json` - Test configuration
 - Expected output: ~18 variants after QC, ~5KB MSAV file
-
-### Test Coverage
-- **Unit Tests**: Individual task validation (4 tests)
-- **Integration Tests**: End-to-end pipeline validation (2 tests)  
-- **Performance Tests**: Resource usage and timing validation
-- **Cross-platform**: Docker platform compatibility testing
-- **Quality Gates**: Automated pass/fail determination
 
 ## Deployment
 
-### GitHub Actions CI/CD Pipeline
-The repository includes automated CI/CD workflows for quality assurance:
+### Simple Local Testing
+No complex CI/CD setup required - just run locally:
 
-#### Continuous Integration
-```yaml
-# .github/workflows/unit-tests.yml
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+### Automated Container Builds (GitHub Actions)
+
+The Docker container is automatically built and published to GitHub Container Registry on every push:
+
+- **Container Registry**: `ghcr.io/mamanambiya/federated-imputation:latest`
+- **Automated Builds**: Multi-platform (linux/amd64, linux/arm64)
+- **WDL Validation**: All workflow files are automatically validated
+- **Integration Testing**: Container functionality tested on every build
+
+**Using the automated container:**
+```bash
+# Pull the latest automated build
+docker pull ghcr.io/mamanambiya/federated-imputation:latest
+
+# Use with GitHub Container Registry WDL variant
+java -jar cromwell.jar run federated_imputation_pipeline_github.wdl -i test_input.json
 ```
 
-- **Automated Testing**: Every commit triggers comprehensive unit tests
-- **Quality Gates**: PRs blocked if tests fail
-- **Parallel Execution**: Matrix strategy for faster feedback
-- **Cross-platform**: Tests run on `ubuntu-latest` with platform compatibility
-
-#### Continuous Deployment Readiness
-```yaml
-# .github/workflows/integration-tests.yml  
-on:
-  push:
-    branches: [ main ]
-  schedule:
-    - cron: '0 2 * * *'  # Daily monitoring
-```
-
-- **Production Validation**: Main branch changes trigger integration tests
-- **Daily Monitoring**: Automated health checks at 2 AM UTC
-- **Release Readiness**: Validates complete pipeline before deployment
-
-#### Manual Triggers
-```yaml
-workflow_dispatch:
-  inputs:
-    test_scope:
-      type: choice
-      options: [all, extract_region, quality_control, minimac_conversion]
-```
-
-- **On-demand Testing**: Run specific test suites manually
-- **Debug Mode**: Individual component testing for troubleshooting
-- **Performance Testing**: Optional stress testing configurations
+**Build Status**: Check the badge above for current build status. Green means the latest container is ready for use!
 
 ### DNAstack Workbench
 1. **Upload Files**:
-   - `workflows/federated_imputation_pipeline.wdl`
-   - `inputs/production.json` (configured for your data)
+   - `federated_imputation_pipeline.wdl`
+   - `test_input.json` (or your own configuration)
 
-2. **Configure Container**: Ensure `mamana/imputation:minimac4-4.1.6` is available
+2. **Configure Container**: Ensure `mamana/imputation:minimac4-all` is available
 
 3. **Execute**: Run workflow through web interface
 
@@ -306,19 +259,40 @@ workflow_dispatch:
 - Configure S3 storage paths
 - Scale with EC2 instances
 
-**Azure (Microsoft Genomics)**
+**Azure Batch**
 - Use Azure Batch for execution
-- Configure Azure Blob Storage
-- Integrate with Azure AD
+- Configure Azure Blob Storage for input/output
+- Upload files to working directory before execution
+- Use `test_input_azure.json` for Azure-specific paths
+- Ensure Docker container `mamana/imputation:minimac4-all` is accessible
 
 ### HPC Clusters
 ```bash
 # Singularity setup
-singularity pull docker://mamana/imputation:minimac4-4.1.6
+singularity pull docker://mamana/imputation:minimac4-all
 
 # SLURM submission script
 sbatch --job-name=federated-imputation run_pipeline.sh
 ```
+
+## Troubleshooting
+
+### Azure Batch Issues
+
+**Exit Code 10 (ExtractRegion Task)**
+- Ensure test data files are uploaded to the batch task working directory
+- Check that file paths in input JSON match Azure Batch environment
+- Verify Docker container accessibility from Azure
+
+**File Path Issues**
+- Use `test_input_azure.json` for Azure Batch deployments
+- Ensure all input files are in the correct Azure working directory
+- Check Azure Batch task file management configuration
+
+**Docker Container Issues**
+- Verify `mamana/imputation:minimac4-all` is accessible from Azure
+- Check Azure container registry permissions
+- Ensure proper network connectivity for Docker Hub
 
 ## Production Use Cases
 
@@ -352,15 +326,10 @@ sbatch --job-name=federated-imputation run_pipeline.sh
 3. Add validation and error handling
 4. Update documentation for new features
 
-### Testing Requirements
-- All tasks must include unit tests
-- Integration tests for full pipeline
-- Validation with multiple VCF formats
-
-### Pull Request Process
-1. Create feature branch
-2. Add tests for new functionality
-3. Update documentation
+### Simple Development Workflow
+1. Clone repository
+2. Make changes to `federated_imputation_pipeline.wdl`
+3. Test with `test_input.json`
 4. Submit PR with clear description
 
 ## License
@@ -385,7 +354,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 This pipeline enables federated genotype imputation across African institutions while preserving data sovereignty and promoting collaborative genomics research.
 
-**Container**: `mamana/imputation:minimac4-4.1.6`  
+**Container**: `mamana/imputation:minimac4-all`  
 **Workflow**: Production-ready WDL pipeline  
 **Output**: MSAV files for federated networks  
 **Status**: **READY FOR DEPLOYMENT**
