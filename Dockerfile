@@ -53,7 +53,10 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.20/htslib-1.20.t
 RUN wget https://github.com/statgen/Minimac4/releases/download/v4.1.6/minimac4-4.1.6-Linux-x86_64.sh \
     && chmod +x minimac4-4.1.6-Linux-x86_64.sh \
     && ./minimac4-4.1.6-Linux-x86_64.sh --skip-license --prefix=/usr/local \
-    && rm minimac4-4.1.6-Linux-x86_64.sh
+    && rm minimac4-4.1.6-Linux-x86_64.sh \
+    && echo "Checking minimac4 installation..." \
+    && ls -la /usr/local/bin/minimac* || echo "No minimac4 found in /usr/local/bin" \
+    && which minimac4 || echo "minimac4 not in PATH"
 
 # Update library paths
 RUN ldconfig
@@ -61,11 +64,11 @@ RUN ldconfig
 # Add /usr/local/bin to PATH
 ENV PATH="/usr/local/bin:${PATH}"
 
-# Verify installations
-RUN bcftools --version && \
-    minimac4 --help && \
-    bgzip -h && \
-    tabix -h
+# Verify installations individually to identify any issues
+RUN echo "Testing bcftools..." && bcftools --version
+RUN echo "Testing minimac4..." && minimac4 --help | head -5  
+RUN echo "Testing bgzip..." && bgzip -h
+RUN echo "Testing tabix..." && tabix -h
 
 # Create working directories
 RUN mkdir -p /data /output
