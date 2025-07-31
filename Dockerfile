@@ -49,27 +49,11 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.20/htslib-1.20.t
     && cd .. \
     && rm -rf htslib-1.20*
 
-# Install savvy library (required by Minimac4)
-RUN git clone https://github.com/statgen/savvy.git \
-    && cd savvy \
-    && mkdir build \
-    && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release .. \
-    && make \
-    && make install \
-    && cd ../.. \
-    && rm -rf savvy
-
-# Install Minimac4
-RUN git clone https://github.com/statgen/Minimac4.git \
-    && cd Minimac4 \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make \
-    && cp minimac4 /usr/local/bin/ \
-    && cd ../.. \
-    && rm -rf Minimac4
+# Install Minimac4 using pre-built binary (much simpler!)
+RUN wget https://github.com/statgen/Minimac4/releases/download/v4.1.6/minimac4-4.1.6-Linux-x86_64.sh \
+    && chmod +x minimac4-4.1.6-Linux-x86_64.sh \
+    && ./minimac4-4.1.6-Linux-x86_64.sh --skip-license --prefix=/usr/local \
+    && rm minimac4-4.1.6-Linux-x86_64.sh
 
 # Update library paths
 RUN ldconfig
