@@ -3,3 +3,23 @@ outputs
 cromwell-executions
 cromwell-workflow-logs
 .history
+
+# Docker build artifacts
+*.tar
+*.log
+
+# Pipeline output files
+*.msav
+*_stats.txt
+*_summary.txt
+
+# VCF output files (keep test data)
+!test_chr22_region_bgzip.vcf.gz
+!test_chr22_region_bgzip.vcf.gz.csi
+
+# Keep Cromwell configuration
+!cromwell.conf
+
+# Keep GitHub Actions workflows
+!.github/
+!.github/workflows/

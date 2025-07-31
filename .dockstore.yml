@@ -2,9 +2,9 @@ version: 1.2
 workflows:
   - subclass: WDL
     name: FederatedGenotypeImputationPipeline
-    primaryDescriptorPath: /workflows/federated_imputation_pipeline.wdl
+    primaryDescriptorPath: /federated_imputation_pipeline.wdl
     testParameterFiles:
-      - /test_input.wdl.json
+      - /test_input.json
     authors:
       - name: Mamana Mbiyavanga
         email: mamana.mbiyavanga@uct.ac.za

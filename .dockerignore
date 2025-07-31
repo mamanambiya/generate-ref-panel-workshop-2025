@@ -1,0 +1,45 @@
+# Git and version control
+.git
+.gitignore
+
+# Cromwell execution files
+cromwell-executions/
+cromwell-workflow-logs/
+cromwell.jar
+
+# Test output files
+*.msav
+*_stats.txt
+*_summary.txt
+*.vcf.gz
+*.vcf.gz.csi
+
+# Documentation
+README.md
+AZURE_DEPLOYMENT.md
+*.md
+
+# Configuration files not needed in container
+test_input*.json
+.dockstore.yml
+
+# Build scripts
+build_docker.sh
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/ 

@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Setup Script for Federated Genotype Imputation Pipeline
+# GA4GH Hackathon 2025 - African Genomics Team
+
+echo "🚀 Setting up Federated Genotype Imputation Pipeline"
+echo "=================================================="
+
+# Make shell scripts executable
+echo "📝 Making shell scripts executable..."
+chmod +x build_docker.sh
+chmod +x push_to_github.sh
+chmod +x run_cromwell_multiplatform.sh
+
+echo "✅ Setup completed!"
+echo ""
+echo "📋 Available Commands:"
+echo ""
+echo "🐳 Docker Operations:"
+echo "  ./build_docker.sh          - Build Docker container locally"
+echo "  ./push_to_github.sh        - Push container to GitHub Container Registry"
+echo ""
+echo "🧪 Local Testing:"
+echo "  # With remote container (current):"
+echo "  java -jar cromwell.jar run federated_imputation_pipeline.wdl -i test_input.json"
+echo ""
+echo "  # With GitHub Container Registry:"
+echo "  java -jar cromwell.jar run federated_imputation_pipeline_github.wdl -i test_input.json"
+echo ""
+echo "  # With local container (after building):"
+echo "  java -jar cromwell.jar run federated_imputation_pipeline_local.wdl -i test_input.json"
+echo ""
+echo "  # With engine-level platform handling (recommended):"
+echo "  ./run_cromwell_multiplatform.sh"
+echo "  # or manually:"
+echo "  java -Dconfig.file=cromwell.conf -jar cromwell.jar run federated_imputation_pipeline_clean.wdl -i test_input.json"
+echo ""
+echo "☁️  Cloud Deployment:"
+echo "  # Use test_input_azure.json for Azure Batch"
+echo "  # Container can be pushed to GitHub Container Registry (ghcr.io)"
+echo "  # See AZURE_DEPLOYMENT.md for detailed instructions"
+echo ""
+echo "📁 Key Files:"
+echo "  federated_imputation_pipeline.wdl        - Main workflow (remote container)"
+echo "  federated_imputation_pipeline_github.wdl - GitHub Container Registry variant"
+echo "  federated_imputation_pipeline_local.wdl  - Local container variant"
+echo "  federated_imputation_pipeline_clean.wdl  - Engine-level platform handling"
+echo "  test_input.json                          - Local testing configuration"
+echo "  test_input_azure.json                    - Azure Batch configuration"
+echo "  cromwell.conf                            - Cromwell engine configuration"
+echo "  run_cromwell_multiplatform.sh            - Multi-platform execution script"
+echo "  Dockerfile                               - Container definition"
+echo "  .github/workflows/                       - GitHub Actions CI/CD"
+echo "  AZURE_DEPLOYMENT.md                     - Cloud deployment guide"
+echo ""
+echo "🎯 Next Steps:"
+echo "  1. For local testing: Use existing setup with remote container"
+echo "  2. For platform-agnostic: ./run_cromwell_multiplatform.sh (recommended)"
+echo "  3. For GitHub Container Registry: Use _github.wdl variant"
+echo "  4. For custom builds: ./build_docker.sh then use _local.wdl"
+echo "  5. For Azure/Cloud: Follow AZURE_DEPLOYMENT.md guide"
+echo ""
+echo "Ready for GA4GH Hackathon 2025! 🎉" 

@@ -1,0 +1,12 @@
+{
+  "FederatedImputationPipeline.input_vcf": "test_chr22_region_bgzip.vcf.gz",
+  "FederatedImputationPipeline.input_vcf_index": "test_chr22_region_bgzip.vcf.gz.csi",
+  "FederatedImputationPipeline.chromosome": "22",
+  "FederatedImputationPipeline.start_position": 16000000,
+  "FederatedImputationPipeline.end_position": 16990000,
+  "FederatedImputationPipeline.min_quality": 20.0,
+  "FederatedImputationPipeline.min_af": 0.01,
+  "FederatedImputationPipeline.max_missing": 0.1,
+  "FederatedImputationPipeline.output_prefix": "test_federated_panel",
+  "FederatedImputationPipeline.compress_reference": true
+} 
