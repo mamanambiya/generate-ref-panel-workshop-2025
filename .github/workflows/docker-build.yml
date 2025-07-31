@@ -77,13 +77,22 @@ jobs:
     - name: Test Docker image (amd64)
       if: github.event_name != 'pull_request'
       run: |
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        # Only pull if on main branch (where image was pushed)
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        else
+          # On develop/feature branches, use the locally built image
+          IMAGE="${{ steps.build.outputs.imageid }}"
+          echo "Using locally built image: $IMAGE"
+        fi
+        
         echo "Testing bcftools..."
-        docker run --rm --platform linux/amd64 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest bcftools --version
+        docker run --rm --platform linux/amd64 $IMAGE bcftools --version
         echo "Testing minimac4..."
-        docker run --rm --platform linux/amd64 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest minimac4 --help | head -5
+        docker run --rm --platform linux/amd64 $IMAGE minimac4 --help | head -5
         echo "Testing bgzip..."
-        docker run --rm --platform linux/amd64 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest bgzip -h | head -3
+        docker run --rm --platform linux/amd64 $IMAGE bgzip -h | head -3
 
     - name: Update container documentation
       if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -97,7 +106,7 @@ jobs:
       if: github.event_name != 'pull_request'
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        image-ref: ${{ github.ref == 'refs/heads/main' && format('{0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || steps.build.outputs.imageid }}
         format: 'sarif'
         output: 'trivy-results.sarif'
 
