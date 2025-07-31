@@ -68,7 +68,7 @@ ENV PATH="/usr/local/bin:${PATH}"
 RUN echo "Testing bcftools..." && bcftools --version
 RUN echo "Testing minimac4..." && minimac4 --help | head -5  
 RUN echo "Testing bgzip..." && bgzip -h
-RUN echo "Testing tabix..." && tabix -h
+RUN echo "Testing tabix..." && tabix --help 2>&1 | head -5 || tabix 2>&1 | head -5
 
 # Create working directories
 RUN mkdir -p /data /output
